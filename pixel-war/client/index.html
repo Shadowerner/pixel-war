@@ -3,18 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel War Multi-joueurs</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Pixel War Multi</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #canvas-container {
+            margin: 20px 0;
+            border: 2px solid #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        #pixel-canvas {
+            background-color: white;
+            cursor: crosshair;
+        }
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        #color-picker {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+        }
+        #timer {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #coords {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+    <!-- Ajoutez Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
     <div id="container">
-        <h1>Pixel War Multi-joueurs</h1>
-        <p>Placez un pixel toutes les 10 secondes. Combattez pour dominer le canvas!</p>
+        <h1>Pixel War Multi</h1>
+        <p>Placez un pixel toutes les 10 secondes - Visible par tous!</p>
         
         <div id="controls">
             <input type="color" id="color-picker" value="#ff0000">
             <div id="timer">Prochain pixel dans: 10s</div>
-            <div id="player-count">0 joueurs en ligne</div>
         </div>
         
         <div id="canvas-container">
@@ -22,13 +67,8 @@
         </div>
         
         <div id="coords">X: 0, Y: 0</div>
-        <div id="leaderboard">
-            <h3>Classement</h3>
-            <ol id="leaderboard-list"></ol>
-        </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
