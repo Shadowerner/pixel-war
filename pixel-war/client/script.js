@@ -1,18 +1,3 @@
-// Configuration Firebase - À remplacer avec vos propres infos
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
-
-// Initialisation Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const canvasSize = 500;
@@ -28,39 +13,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const coordsElement = document.getElementById('coords');
     
     // État du jeu
+    let pixels = {};
     let lastPixelTime = 0;
     let cooldown = 0;
     let canPlacePixel = true;
     
     // Initialisation du canvas
     function initCanvas() {
-        // Fond blanc
+        // Dessiner la grille
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvasSize, canvasSize);
         
-        // Écoute les changements dans la base de données
-        database.ref('pixels').on('value', (snapshot) => {
-            const pixels = snapshot.val() || {};
-            
-            // Redessine tous les pixels
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvasSize, canvasSize);
-            
-            for (const pos in pixels) {
-                const [x, y] = pos.split(',').map(Number);
-                ctx.fillStyle = pixels[pos];
-                ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-            }
-            
-            // Redessine la grille
-            drawGrid();
-        });
+        // Dessiner les pixels existants
+        for (const pos in pixels) {
+            const [x, y] = pos.split(',').map(Number);
+            ctx.fillStyle = pixels[pos];
+            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        }
         
-        drawGrid();
-    }
-    
-    // Dessine la grille
-    function drawGrid() {
+        // Dessiner la grille
         ctx.strokeStyle = '#e0e0e0';
         ctx.lineWidth = 0.5;
         for (let i = 0; i <= gridSize; i++) {
@@ -76,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Met à jour le timer
+    // Mettre à jour le timer
     function updateTimer() {
         const now = Date.now();
         const elapsed = Math.floor((now - lastPixelTime) / 1000);
@@ -91,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Place un pixel
+    // Placer un pixel
     function placePixel(x, y, color) {
         const now = Date.now();
         
@@ -100,20 +71,32 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
         
-        // Vérifie les limites
+        // Vérifier les limites
         if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) {
             alert("Position en dehors du canvas!");
             return false;
         }
         
-        // Envoie le pixel à Firebase
+        // Enregistrer le pixel
         const pos = `${x},${y}`;
-        database.ref('pixels/' + pos).set(color);
+        pixels[pos] = color;
         
-        // Met à jour le timer
+        // Dessiner le pixel
+        ctx.fillStyle = color;
+        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        
+        // Redessiner la grille sur le pixel
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        
+        // Mettre à jour le timer
         lastPixelTime = now;
         canPlacePixel = false;
         updateTimer();
+        
+        // Sauvegarder dans le localStorage
+        localStorage.setItem('pixelWarPixels', JSON.stringify(pixels));
         
         return true;
     }
@@ -127,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
         placePixel(x, y, colorPicker.value);
     });
     
-    // Affiche les coordonnées de la souris
+    // Afficher les coordonnées de la souris
     canvas.addEventListener('mousemove', function(e) {
         const rect = canvas.getBoundingClientRect();
         const x = Math.floor((e.clientX - rect.left) / pixelSize);
@@ -136,9 +119,56 @@ document.addEventListener('DOMContentLoaded', function() {
         coordsElement.textContent = `X: ${x}, Y: ${y}`;
     });
     
+    // Charger les pixels depuis le localStorage
+    function loadPixels() {
+        const savedPixels = localStorage.getItem('pixelWarPixels');
+        if (savedPixels) {
+            pixels = JSON.parse(savedPixels);
+        }
+    }
+    
     // Initialisation
+    loadPixels();
     initCanvas();
     
-    // Met à jour le timer toutes les secondes
+    // Mettre à jour le timer toutes les secondes
     setInterval(updateTimer, 1000);
+    
+    // Pour un système multi-utilisateurs, vous devriez utiliser une base de données
+    // Voici un exemple simplifié avec un serveur Node.js:
+    /*
+    async function fetchPixels() {
+        try {
+            const response = await fetch('/api/pixels');
+            if (response.ok) {
+                pixels = await response.json();
+                initCanvas();
+            }
+        } catch (error) {
+            console.error('Error fetching pixels:', error);
+        }
+    }
+    
+    async function sendPixel(x, y, color) {
+        try {
+            const response = await fetch('/api/pixels', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ x, y, color }),
+            });
+            
+            if (response.ok) {
+                fetchPixels();
+            }
+        } catch (error) {
+            console.error('Error sending pixel:', error);
+        }
+    }
+    
+    // Appeler fetchPixels() périodiquement pour les mises à jour
+    setInterval(fetchPixels, 5000);
+    fetchPixels();
+    */
 });
