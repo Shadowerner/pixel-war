@@ -3,75 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel War</title>
+    <title>Pixel War Multi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
-        #container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-        
         #canvas-container {
             position: relative;
-            margin: 20px 0;
-            border: 2px solid #333;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        
-        #pixel-canvas {
+            margin: 20px auto;
+            border: 3px solid #343a40;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             background-color: white;
-            cursor: crosshair;
         }
-        
-        #controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        #pixel-canvas {
+            display: block;
+            background-color: white;
         }
-        
-        #color-picker {
-            width: 50px;
-            height: 50px;
-            padding: 0;
-            border: none;
-            cursor: pointer;
-        }
-        
-        #timer {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        #coords {
-            margin-top: 10px;
+        #user-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255,255,255,0.9);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             font-size: 14px;
-            color: #666;
+        }
+        .pixel-info {
+            position: absolute;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -120%);
+            display: none;
         }
     </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-    <div id="container">
-        <h1>Pixel War</h1>
-        <p>Placez un pixel toutes les 10 secondes où vous voulez !</p>
-        
-        <div id="controls">
-            <input type="color" id="color-picker" value="#ff0000">
-            <div id="timer">Prochain pixel dans: 10s</div>
+    <div class="container py-4">
+        <div class="text-center mb-4">
+            <h1 class="display-4">Pixel War</h1>
+            <p class="lead">Placez un pixel toutes les 10 secondes - Bataillez pour l'art collaboratif!</p>
         </div>
-        
-        <div id="canvas-container">
-            <canvas id="pixel-canvas" width="500" height="500"></canvas>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div id="canvas-container">
+                    <canvas id="pixel-canvas" width="800" height="600"></canvas>
+                    <div id="user-info" class="d-none">
+                        Connecté en tant que: <span id="username"></span>
+                        <button id="logout-btn" class="btn btn-sm btn-outline-danger ms-2">Déconnexion</button>
+                    </div>
+                    <div id="pixel-info" class="pixel-info"></div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Contrôles</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="auth-section">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" id="email" class="form-control" placeholder="votre@email.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Mot de passe</label>
+                                <input type="password" id="password" class="form-control" placeholder="••••••••">
+                            </div>
+                            <button id="login-btn" class="btn btn-primary w-100">Se connecter</button>
+                            <button id="signup-btn" class="btn btn-outline-secondary w-100 mt-2">Créer un compte</button>
+                        </div>
+                        
+                        <div id="controls-section" class="d-none">
+                            <div class="mb-3">
+                                <label for="color-picker" class="form-label">Couleur du pixel</label>
+                                <input type="color" id="color-picker" class="form-control form-control-color" value="#ff0000" title="Choisissez votre couleur">
+                            </div>
+                            <div class="alert alert-info">
+                                <div id="timer">Prochain pixel dans: <span class="fw-bold">10</span> secondes</div>
+                                <div class="small">Position: <span id="coords">(0, 0)</span></div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button id="place-btn" class="btn btn-success">Placer un pixel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Statistiques</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Pixels placés
+                                <span id="total-pixels" class="badge bg-primary rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Utilisateurs actifs
+                                <span id="active-users" class="badge bg-success rounded-pill">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Dernière mise à jour
+                                <span id="last-update" class="small text-muted">-</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div id="coords">X: 0, Y: 0</div>
     </div>
 
     <script src="script.js"></script>
