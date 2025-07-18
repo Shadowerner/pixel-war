@@ -1,3 +1,18 @@
+// Configuration Firebase - À remplacer avec vos propres infos
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Initialisation Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const canvasSize = 500;
@@ -11,39 +26,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const colorPicker = document.getElementById('color-picker');
     const timerElement = document.getElementById('timer');
     const coordsElement = document.getElementById('coords');
-    const playerCountElement = document.getElementById('player-count');
-    const leaderboardList = document.getElementById('leaderboard-list');
     
     // État du jeu
-    let pixels = {};
     let lastPixelTime = 0;
     let cooldown = 0;
     let canPlacePixel = true;
-    let players = {};
-    let playerId = null;
-    let playerColor = '#ff0000';
-    
-    // Connexion WebSocket
-    const socket = io();
     
     // Initialisation du canvas
     function initCanvas() {
-        // Dessiner le fond blanc
+        // Fond blanc
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvasSize, canvasSize);
         
-        // Dessiner tous les pixels
-        for (const pos in pixels) {
-            const [x, y] = pos.split(',').map(Number);
-            ctx.fillStyle = pixels[pos].color;
-            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-        }
+        // Écoute les changements dans la base de données
+        database.ref('pixels').on('value', (snapshot) => {
+            const pixels = snapshot.val() || {};
+            
+            // Redessine tous les pixels
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+            
+            for (const pos in pixels) {
+                const [x, y] = pos.split(',').map(Number);
+                ctx.fillStyle = pixels[pos];
+                ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            }
+            
+            // Redessine la grille
+            drawGrid();
+        });
         
-        // Dessiner la grille
         drawGrid();
     }
     
-    // Dessiner la grille
+    // Dessine la grille
     function drawGrid() {
         ctx.strokeStyle = '#e0e0e0';
         ctx.lineWidth = 0.5;
@@ -60,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Mettre à jour le timer
+    // Met à jour le timer
     function updateTimer() {
         const now = Date.now();
         const elapsed = Math.floor((now - lastPixelTime) / 1000);
@@ -75,95 +91,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Placer un pixel
+    // Place un pixel
     function placePixel(x, y, color) {
+        const now = Date.now();
+        
         if (!canPlacePixel) {
             alert(`Attendez encore ${cooldown} seconde(s) avant de placer un nouveau pixel.`);
             return false;
         }
         
-        // Vérifier les limites
+        // Vérifie les limites
         if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) {
             alert("Position en dehors du canvas!");
             return false;
         }
         
-        // Envoyer au serveur
-        socket.emit('place-pixel', { x, y, color });
+        // Envoie le pixel à Firebase
+        const pos = `${x},${y}`;
+        database.ref('pixels/' + pos).set(color);
         
-        // Mettre à jour le timer côté client
-        lastPixelTime = Date.now();
+        // Met à jour le timer
+        lastPixelTime = now;
         canPlacePixel = false;
         updateTimer();
         
         return true;
     }
-    
-    // Mettre à jour le classement
-    function updateLeaderboard() {
-        // Convertir l'objet players en array et trier
-        const playersArray = Object.values(players).sort((a, b) => b.pixelsPlaced - a.pixelsPlaced);
-        
-        leaderboardList.innerHTML = '';
-        
-        playersArray.forEach((player, index) => {
-            const li = document.createElement('li');
-            
-            const colorSpan = document.createElement('span');
-            colorSpan.className = 'player-color';
-            colorSpan.style.backgroundColor = player.color;
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = player.id === playerId ? `Vous (${player.pixelsPlaced})` : `Joueur ${player.id.slice(0, 4)} (${player.pixelsPlaced})`;
-            
-            li.appendChild(colorSpan);
-            li.appendChild(nameSpan);
-            leaderboardList.appendChild(li);
-        });
-    }
-    
-    // Événements Socket.io
-    
-    // Connexion initiale
-    socket.on('connect', () => {
-        playerId = socket.id;
-        playerColor = colorPicker.value;
-        
-        // Enregistrer le joueur
-        socket.emit('register-player', { color: playerColor });
-    });
-    
-    // Recevoir l'état initial
-    socket.on('initial-state', (data) => {
-        pixels = data.pixels;
-        players = data.players;
-        initCanvas();
-        updateLeaderboard();
-        playerCountElement.textContent = `${Object.keys(players).length} joueurs en ligne`;
-    });
-    
-    // Mise à jour des pixels
-    socket.on('pixel-update', (data) => {
-        const { x, y, color, playerId } = data;
-        const pos = `${x},${y}`;
-        
-        // Mettre à jour le pixel
-        pixels[pos] = { color, playerId };
-        
-        // Redessiner le pixel
-        ctx.fillStyle = color;
-        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-        
-        // Redessiner la grille
-        drawGrid();
-    });
-    
-    // Mise à jour des joueurs
-    socket.on('players-update', (updatedPlayers) => {
-        players = updatedPlayers;
-        playerCountElement.textContent = `${Object.keys(players).length} joueurs en ligne`;
-        updateLeaderboard();
-    });
     
     // Gestionnaire d'événement pour le clic sur le canvas
     canvas.addEventListener('click', function(e) {
@@ -174,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         placePixel(x, y, colorPicker.value);
     });
     
-    // Afficher les coordonnées de la souris
+    // Affiche les coordonnées de la souris
     canvas.addEventListener('mousemove', function(e) {
         const rect = canvas.getBoundingClientRect();
         const x = Math.floor((e.clientX - rect.left) / pixelSize);
@@ -183,15 +136,9 @@ document.addEventListener('DOMContentLoaded', function() {
         coordsElement.textContent = `X: ${x}, Y: ${y}`;
     });
     
-    // Changer de couleur
-    colorPicker.addEventListener('change', function(e) {
-        playerColor = e.target.value;
-        socket.emit('update-player-color', { color: playerColor });
-    });
-    
     // Initialisation
     initCanvas();
     
-    // Mettre à jour le timer toutes les secondes
+    // Met à jour le timer toutes les secondes
     setInterval(updateTimer, 1000);
 });
