@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel War Multi-joueurs</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <h1>Pixel War Multi-joueurs</h1>
+        <p>Placez un pixel toutes les 10 secondes. Combattez pour dominer le canvas!</p>
+        
+        <div id="controls">
+            <input type="color" id="color-picker" value="#ff0000">
+            <div id="timer">Prochain pixel dans: 10s</div>
+            <div id="player-count">0 joueurs en ligne</div>
+        </div>
+        
+        <div id="canvas-container">
+            <canvas id="pixel-canvas" width="500" height="500"></canvas>
+        </div>
+        
+        <div id="coords">X: 0, Y: 0</div>
+        <div id="leaderboard">
+            <h3>Classement</h3>
+            <ol id="leaderboard-list"></ol>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
